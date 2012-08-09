@@ -6,47 +6,34 @@
 " Website:     https://github.com/wdicarlo/vim-notebook
 " Version:     0.1
 " Note:        
-"              
+" Changes:
+"    2012/08/09 version 0.1:
+"         * initial release
 " ============================================================================
 scriptencoding utf-8
-let g:vim_debug=1
-"if exists('s:nb_loaded')
-"  finish
-"endif
-"if &cp || exists('g:nb_loaded')
-if g:vim_debug == 0
-  if &cp || exists('s:nb_loaded')
-      finish
-  endif
+
+if &cp || exists('s:nb_loaded')
+    finish
 endif
+
 if v:version < 700
     echohl WarningMsg
     echomsg 'Notebook: Vim version is too old, Notebook requires at least 7.0'
     echohl None
     finish
 endif
-" When the notebook buffer is created when loading a Vim session file,
-" the notebook buffer needs to be initialized. The BufFilePost event
-" is used to handle this case.
-"autocmd BufFilePost *.nb call s:Notebook_Vim_Session_Load()
+
 let s:nb_loaded="loaded"
 let s:nb_context=3
 let s:nb_folder=$HOME.'/.notebook'
 let s:nb_config=$HOME.'/.notebook/notebook.rc'
 let s:nb_items = sort(['Text', 'Action', 'Query', 'Session', 'Patch', 'Import', 'List' ])
-"if !exists('g:nb_categories')
-"    let g:nb_categories =['NONE'] 
-"endif
-function! NB_GetItemPosition( item, search_from )
-  echoerr "still under development"
-endfunction
 function! NB_Listfiles(dir)
   if isdirectory(a:dir) == 0
     return
   endif
   let fnm = "*.nb"
   let files = filter(split(globpath(a:dir, fnm), '\n'), '!isdirectory(v:val)')
-  " echo 'dir=' a:dir ' fnm=' fnm ' len(files)=' len(files)
   if len(files) == 0
     return
   endif
@@ -56,7 +43,6 @@ function! NB_Listfiles(dir)
     call add(list, fnamemodify(l:fp,":t"))
     let i=i+1
   endfor 
-  "echo "List="string(list)
   return list
 endfunction
 function! NB_InitMarks ()
@@ -64,7 +50,6 @@ function! NB_InitMarks ()
   let l:title=input("Notebook Title? ")
   let l:note=input("Notebook Description? ")
   exec ":redir! > ".s:nb_file
-  ":echo 
   :echo "\nText: ".l:title 
   :echo "\t: Category:  NOTEBOOK" 
   :echo "\t: Reference: text"
@@ -78,11 +63,6 @@ function! NB_UpdateConfig()
   :echo "\" "
   :echo "let g:nb_notebook = \"".g:nb_notebook."\""
   :echo "let g:nb_categories = ".string(g:nb_categories)
-  " :echo "let g:nb_categories = ["
-  " for cat in g:nb_categories
-  "   :echo "\t\t \ ".cat.","
-  " endfor
-  " :echo "\t\ ]"
   :redir END
 endfunction
 function! NB_InitNotebook( notebook )
@@ -117,10 +97,6 @@ else
   call NB_InitNotebook('default')
 endif
 if has("autocmd")
-		"autocmd BufWinEnter          *.nb nmap <cr> :call NB_GoToMark ()<CR>
-		" autocmd BufUnload           *.nb nunmap <cr> 
-		"autocmd BufWinEnter          *.nb nmap <Del> :call NB_Window_Close ()<cr>
-		" autocmd BufUnload           *.nb nunmap <Del> 
     autocmd BufRead               *.nb set filetype=vo_base
     autocmd WinLeave              *.nb :call NB_Window_Leave()
 endif
@@ -162,7 +138,6 @@ function! NB_CreateMenu( header, list, hasNew )
     else
       let menu=add(menu,index."  ".item)
     endif
-    "let menu = add(menu, index."  ".item)
   endfor
   return menu
 endfunction
@@ -227,6 +202,10 @@ function! NB_SelectNotebook()
   call NB_Window_Open()
 endfunction
 function! NB_SelectCategory( canNew )
+  if !exists('g:nb_categories')
+      let g:nb_categories =['NONE'] 
+    silent! call NB_UpdateConfig()
+  endif
   if exists("g:nb_categories")
     let list = ['Item Category?']
     let i=1
@@ -306,12 +285,10 @@ function! NB_AddMarkLineRef( use_context )
   let l:note=input("Item Note? ")
   let l:time=strftime("%y_%m_%d_%H_%M")
   exec ":redir >> ".s:nb_file
-  "echo " "
   :echo "\nText: ".l:note 
   :echo "\t: Category:  ".l:id 
   :echo "\t: Reference: ".expand("%:p").':'.line('.')
   :echo "\t: Date:      ".l:time
-  "call NB_AddMark ( a:use_context )
   if s:nb_context > 0 && a:use_context > 0 
     let nb_linenum = line('.')
     if a:use_context == 1
@@ -360,12 +337,10 @@ function! NB_AddMarkSelLineRef(quick)
   endif
   let l:time=strftime("%y_%m_%d_%H_%M")
   exec ":redir >> ".s:nb_file
-  "echo " "
   :echo "\nText: ".l:note 
   :echo "\t: Category:  ".l:id 
   :echo "\t: Reference: ".expand("%:p").':'.line('.')
   :echo "\t: Date:      ".l:time
-  "call NB_AddMark ( a:use_context )
   if s:nb_context > 0 && strlen(sel_text) > 0 
     let l:nb_counter = 1
     let l:nb_linenum = 1
@@ -385,12 +360,10 @@ endfunction
 function! NB_AddNote()
   silent! exec ":bd ".s:nb_file
   let l:title=input("Note Title? ")
-  "let l:category=NB_SelectCategory(1)
   let l:category='INFORMATION'
   " TODO: input multi-line note
   let l:note=input("Note? ")
   exec ":redir >> ".s:nb_file
-  "echo " "
   echo "\nNote: ".l:title
   :echo "\t: Category:  ".l:category 
   :echo "\t: Reference: text"
@@ -417,7 +390,6 @@ function! NB_AddImport()
   endif
   let l:category=NB_SelectCategory(1)
   exec ":redir >> ".s:nb_file
-  "echo " "
   echo "\nImport: ".l:title
   :echo "\t: Category:  ".l:category 
   :echo "\t: Reference: ".notebook.".nb"
@@ -442,7 +414,6 @@ function! NB_AddCScopeQuery(str)
   let l:note=input("Note? ")
   let sel_text = @p
   exec ":redir >> ".s:nb_file
-  "echo " "
   echo "\nQuery: ".l:note
   :echo "\t: Category:  ".l:category 
   :echo "\t: Reference: ".l:title 
@@ -472,7 +443,6 @@ function! NB_AddGlobalQuery(str)
   let l:note=input("Note? ")
   let sel_text = @p
   exec ":redir >> ".s:nb_file
-  "echo " "
   echo "\nQuery: ".l:note
   :echo "\t: Category:  ".l:category 
   :echo "\t: Reference: ".l:title 
@@ -517,17 +487,11 @@ function! NB_AddSession ()
   endfor
   redir END
 endfunction
-" TODO: complete
-function! NB_AddNoteTemplate()
-endfunction
 function! NB_AddFilePatch()
   silent! exec ":bd ".s:nb_file
   let l:cmd=":!svn diff ".expand("%:p")
   let l:ref=expand("%:p")
   let l:time=strftime("%y_%m_%d_%H_%M")
-  ":redir  @p
-  "exec ":!svn diff ".l:ref
-  ":redir END
   :new
   exec ":%!svn diff ".l:ref
   exec ":1,$y p"
@@ -536,12 +500,10 @@ function! NB_AddFilePatch()
   let l:note=input("Note? ")
   let sel_text = @p
   exec ":redir >> ".s:nb_file
-  "echo " "
   echo "\nPatch: ".l:note
   :echo "\t: Category:  ".l:category 
   :echo "\t: Reference: ".l:cmd 
   :echo "\t: Date:      ".l:time
-  ":echo "\t: Input:     ".l:ref
   if s:nb_context > 0 && strlen(sel_text) > 0 
     let nb_lines = split(sel_text,"\\n")
     let l:nb_counter = 0
@@ -562,9 +524,7 @@ function! NB_GoToQuery ()
     exec "normal! j"
     let line = getline (".")
     let query = strpart( line, match(line, "Reference: ")+len("Reference: ") ) 
-    "echom "Found global query: ".query
     exec ":tabprev"
-    "exec ":bd ".bn
     redraw!
     let @/ = strpart(query,2)
     exec ":".query
@@ -575,9 +535,7 @@ function! NB_GoToQuery ()
       exec "normal! j"
       let line = getline (".")
       let query = strpart( line, match(line, "Reference: ")+len("Reference: ") ) 
-      "echom "Found cscope query: ".query
       exec ":tabprev"
-      "exec ":bd ".bn
       redraw!
       exec ":".query
     endif
@@ -607,8 +565,6 @@ function! NB_GoToSession ()
       echom "No paths specified for item: ".session
       return
     endif
-    " let l:answer=input("Are you sure to activate a new session? (current buffers will be close)? {no/yes} ")
-    " if l:answer == "yes"
     echo session
     let menu_session = [ 'Select Session Action:', '1  Switch Session', '2  Join Session' ]
     let l:answer = inputlist(menu_session)
@@ -632,8 +588,6 @@ endfunction
 function! NB_GoToMark ()
   let filename = fnamemodify(bufname('%'), ':t')
   let nb_file = fnamemodify(s:nb_file,':t')
-  "exe '! echo  file='.filename
-  "if filename ==? l:nb_file
   let bn = bufnr('%')
   let line = getline (".")
   " evaluate the current line
@@ -660,15 +614,7 @@ function! NB_GoToMark ()
     exec "normal! gFzz"
     exec ":bd ".bn
   endif
-  "endif
 endfunction
-""""""""""""""""""""" TODO complete """"""""""""""""""""""""""
-function! NB_SearchClosest ( word, line )
-  " find in forward dir
-  " find in backward dir
-  " return the closest match
-endfunction
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 function! NB_OpenAndSearch () 
   let l:word = expand("<cword>")
   call NB_Window_Open() 
@@ -692,7 +638,6 @@ function! NB_ListContext(refresh)
     for line in lines
       if match(line,'^Text:') >= 0 
         let ref = lines[i+2]
-        " echo ref
         let loc = strpart( ref, match( ref, "Reference: ") + len( "Reference: ") ) 
         let loc = substitute( loc, ":", "|", "" )
         let cat = lines[i+1]
@@ -712,7 +657,6 @@ function! NB_List( str )
   let s:nb_filename=g:nb_notebook.'.nb'
   let s:nb_file = s:nb_folder.'/'.s:nb_filename
   if filereadable(s:nb_file) != 0
-    ":lvimgrep "\/".a:str."\/ ".s:nb_file
     exec "silent :lvimgrep /".a:str."/ ".s:nb_file
     :lopen
   endif
@@ -780,17 +724,8 @@ function! NB_SelectQuery(type)
     if match(line,'^Query:') >= 0 
       let note = strpart( line, len("Query: "))
       let index = NB_GetIndexString(i)
-      " TODO: extract the query from the Reference field
-      "let menu_items = add( menu_items, index." ".strpart(line, len("Query:") ) )
       let line = lines[k+1]
       let item = index." ".strpart(line, match(line, "Reference:")+len("Reference: ") )
-      " TODO: print also the title of the query
-      " let j = len(item)
-      " while j < 50
-      "   let item = item." "
-      "   let j = j + 1
-      " endwhile
-      " let item = item." // ".note
       let menu_items = add( menu_items, item )
       let i = i + 1
     endif
@@ -805,20 +740,6 @@ function! NB_SelectQuery(type)
     return
   endif
   redraw!
-  " let query = strpart( get(menu_items, sel), 4)
-  " echo "Query: ".query." ..."
-  " let cmd = match(query,'^g')
-  " if cmd >= 0 
-  "   let @/ = strpart(query,2)
-  "   exec ":".query
-  " else
-  "   let cmd = match(query,'^cs')
-  "   if cmd >= 0 
-  "     exec ":".query
-  "   else 
-  "     echom "Wrong query format"
-  "   endif
-  " endif
   let query = strpart( get(menu_items, sel), 4)
   echo "Query: ".query." ..."
   let cmd = match(query,'^:g')
@@ -842,7 +763,6 @@ function! NB_SelectAction(type)
   for line in lines
     if match(line,'^Action:') >= 0 
       " TODO: skip startup/shutdown actions
-      "
       let note = strpart( line, len("Action: "))
       let index = NB_GetIndexString(i)
       " TODO: extract the query from the Reference field
@@ -851,14 +771,6 @@ function! NB_SelectAction(type)
       " TODO: ref with command
       " TODO: ref with path to script
       " TODO: vim: desciption for following commands
-      "
-      " TODO: print also the title of the query
-      " let j = len(item)
-      " while j < 50
-      "   let item = item." "
-      "   let j = j + 1
-      " endwhile
-      " let item = item." // ".note
       let menu_items = add( menu_items, item )
       let i = i + 1
     endif
@@ -892,7 +804,6 @@ function! NB_SelectSession(type)
   for line in lines
     if match(line,'^Session:') >= 0 
       " TODO: skip startup/shutdown actions
-      "
       let note = strpart( line, len("Session: "))
       let index = NB_GetIndexString(i)
       " TODO: extract the query from the Reference field
@@ -934,9 +845,6 @@ function! NB_SelectSession(type)
       echom "No paths specified for item: ".session
       return
     endif
-    "let l:answer=input("Are you sure to activate a new session? (current buffers will be close)? {no/yes} ")
-    "if l:answer == "yes"
-    "  bufdo bwipeout
     let menu_session = [ 'Select Session Action:', '1  Switch Session', '2  Join Session' ]
     let l:answer = inputlist(menu_session)
     if l:answer >= 1 && l:answer <= 2
@@ -1004,7 +912,6 @@ function! NB_ImportNotebooks()
   set readonly
   set nomodified
   set nomodifiable
-  "echoerr "Still under development"
 endfunction
 " Window_Open
 function! NB_Window_Open()
@@ -1060,19 +967,11 @@ function! NB_Window_Open_Notebook(notebook)
     set modifiable
     return
   endif
-  "exec "!echo ".file
   exec ":tabnew ".file
   set modifiable
   exec ":set nospell"
   exec ":set filetype=vo_base"
   redraw!
-  "exec "normal! G?Note\<cr>" 
-  "exec "normal! $" 
-  "normal! G
-  "normal! ?Note:\<cr>
-  "exec "normal! zMgg"
-  "exec "normal! GzO?Note:\<cr>" 
-  "exec "normal! 2k"
   silent exec ":g/^ *$/d"
   if &modified == 1
     silent exec ":w"
@@ -1081,7 +980,6 @@ endfunction
 function! NB_Window_Close ()
   " If the window is open, jump to it
   let winnum = bufwinnr(s:nb_file)
-  " :exe "! echo winnum=".winnum
   if winnum != -1
     " Jump to the existing window
     if winnr() != winnum
@@ -1120,8 +1018,6 @@ function! NB_LocListMarks (all)
     exec ":redir! > ".s:nb_file.".loc"
     exec ":g/Category: ".category."/z.3"
     :redir END
-    ":lgetexpr result
-    "exec ":vimgrep /\\|\\d\\+\\|/ ".s:nb_file
     exec ":lfile ".s:nb_file.".loc"
     :lopen
   endif
@@ -1363,4 +1259,3 @@ nmap <S-n>k :exec ":map <S-n>"<cr>
 "nmap <S-n>nc :call NB_LocListMarks(0)<cr>
 nmap <S-n>an :call NB_AddNote()<cr>
 nmap <S-n>ai :call NB_AddImport()<cr>
-" Experimental functionalities
