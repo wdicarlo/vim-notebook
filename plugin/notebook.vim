@@ -9,6 +9,8 @@
 " Changes:
 "    2012/08/09 version 0.1:
 "         * initial release
+" TODO:
+"   * Use relative paths
 " ============================================================================
 scriptencoding utf-8
 
@@ -50,7 +52,7 @@ function! NB_InitMarks ()
   let l:title=input("Notebook Title? ")
   let l:note=input("Notebook Description? ")
   exec ":redir! > ".s:nb_file
-  :echo "\nText: ".l:title 
+  :echo "\nNote: ".l:title 
   :echo "\t: Category:  NOTEBOOK" 
   :echo "\t: Reference: text"
   :echo "\t\t; ".l:note
@@ -97,7 +99,7 @@ else
   call NB_InitNotebook('default')
 endif
 if has("autocmd")
-    autocmd BufRead               *.nb set filetype=vo_base
+    autocmd BufEnter               *.nb set filetype=vo_base
     autocmd WinLeave              *.nb :call NB_Window_Leave()
 endif
 function! NB_GetNotebooksList()
@@ -361,12 +363,14 @@ function! NB_AddNote()
   silent! exec ":bd ".s:nb_file
   let l:title=input("Note Title? ")
   let l:category='INFORMATION'
+  let l:time=strftime("%y_%m_%d_%H_%M")
   " TODO: input multi-line note
   let l:note=input("Note? ")
   exec ":redir >> ".s:nb_file
   echo "\nNote: ".l:title
   :echo "\t: Category:  ".l:category 
   :echo "\t: Reference: text"
+  :echo "\t: Date:      ".l:time
   :echo "\t\t; ".l:note 
   :redir END
   call NB_Window_Open()
@@ -611,6 +615,9 @@ function! NB_GoToMark ()
     " first move the cursor at the begin of the path
     exec "normal! \/Reference: \<cr>"
     exec "normal! ".len("Reference: ")."l"
+    exec ":set filetype=c"
+    ""exec ":set foldmethod=indent"
+    " TODO: use relative paths, in this case replace <root> placeholder
     exec "normal! gFzz"
     exec ":bd ".bn
   endif
@@ -938,6 +945,8 @@ function! NB_Window_Open_Notebook(notebook)
       silent exec ":w"
     endif
     set modifiable
+    exe ":nmap <buffer> <enter> :call NB_GoToMark ()<CR>"
+    exe ":nmap <buffer> q :q<cr><CR>"
     return
   endif
   " Check whether the file is present in any of the tabs.
@@ -965,17 +974,21 @@ function! NB_Window_Open_Notebook(notebook)
       silent exec ":w"
     endif
     set modifiable
+    exe ":nmap <buffer> <enter> :call NB_GoToMark ()<CR>"
+    exe ":nmap <buffer> q :q<cr><CR>"
     return
   endif
   exec ":tabnew ".file
   set modifiable
   exec ":set nospell"
-  exec ":set filetype=vo_base"
+  ""exec ":set filetype=vo_base"
   redraw!
   silent exec ":g/^ *$/d"
   if &modified == 1
     silent exec ":w"
   endif
+  exe ":nmap <buffer> <enter> :call NB_GoToMark ()<CR>"
+    exe ":nmap <buffer> q :q<cr><CR>"
 endfunction
 function! NB_Window_Close ()
   " If the window is open, jump to it

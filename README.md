@@ -193,6 +193,7 @@ TODOs
  * Add Attributes: property (S=Star, P=Priority, I=Impact)
  * Add reference to the file used to create the Query entry
  * Add C/C++/Java mode to annotate code context 
+ * Use relative paths
  * Add support for CCTree queries
  * Improve notebook import functionality
  * Enforce category name in uppercase
