@@ -84,8 +84,62 @@ function! NB_GetIndexString( idx )
       endif
       return index
 endfunction
+function! NB_CreateDefaultNotebook()
+  exec ":redir! > ".s:nb_folder."/default.nb"
+  :echo "\nNote: default notebook"
+  :echo "\t: Category:  NOTEBOOK" 
+  :echo "\t: Reference: text"
+  :echo "\t\t; "
+  :echo "\t\t; "
+  :redir END
+endfunction
 if isdirectory( s:nb_folder ) == 0 
   call mkdir( s:nb_folder, "p" ) 
+  silent! call NB_CreateDefaultNotebook()
+endif
+if filereadable( s:nb_config ) == 0
+  let g:nb_notebook = "default"
+  let g:nb_categories = [
+              \'API', 
+              \'ARRAY',
+              \'CHECK',
+              \'CLASS',
+              \'CODE',
+              \'COMMENT',
+              \'CONDITION',
+              \'CONFIGURATION',
+              \'CONSTANT',
+              \'DEBUG',
+              \'DEFINE',
+              \'DEFINITION',
+              \'DUMMY',
+              \'ENUM',
+              \'EXAMPLE',
+              \'FILE',
+              \'FIX',
+              \'FUNCTION',
+              \'HACK',
+              \'INCLUDE',
+              \'INFORMATION',
+              \'INITIALIZATION',
+              \'INTERESTING',
+              \'ITEM',
+              \'LOG',
+              \'LOGGING',
+              \'MEMORY',
+              \'MESSAGE',
+              \'METHOD',
+              \'NONE',
+              \'NOTE',
+              \'STRUCT',
+              \'STUDY',
+              \'TEMPLATE',
+              \'TEST',
+              \'TODO',
+              \'TYPE',
+              \'VARIABLE',
+              \'WORKAROUND']
+  silent! call NB_UpdateConfig()
 endif
 if filereadable(s:nb_config)
   exec ":source ".s:nb_config
