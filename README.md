@@ -7,6 +7,11 @@ This plugin has been created to annotate and aggregate key aspects, such as sour
 
 Annotations with referenced resources are stored into text files called notebooks under the folder $HOME/.notebook. 
 
+Changes
+-------
+2013-08-18
+ * added support for relative files references (.git or .notebook_root folder used as hook to find the root folder)
+        
 Description
 -----------
 
@@ -131,7 +136,7 @@ Features
 
  * Management of notebooks of annotations (new, activate, rename, delete, archive)
  * Only one notebook can be active 
- * Last used notebook is rembered through vim sessions
+ * Last used notebook is remembered through vim sessions
  * Notebook files are text files with extension .nb
  * Archived notebook files are text files with extension .nba
  * Can visualize active and/or any one of the other notebooks
@@ -148,8 +153,9 @@ Features
  * Allows to select from available list of queries,actions and sessions
  * Store configuration variables in the file ~/.notebook/notebook.rc
  * Partial support for Patch annotation
- * Query entry's body is the text obtained by appling the query
+ * Query entry's body is the text obtained by applying the query
  * User created categories are stored in the config. file called notebook.rc
+ * Uses relative file references
 
 
 Installation
@@ -193,7 +199,6 @@ TODOs
  * Add Attributes: property (S=Star, P=Priority, I=Impact)
  * Add reference to the file used to create the Query entry
  * Add C/C++/Java mode to annotate code context 
- * Use relative paths
  * Add support for CCTree queries
  * Improve notebook import functionality
  * Enforce category name in uppercase

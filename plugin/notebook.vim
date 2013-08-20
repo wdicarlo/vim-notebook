@@ -19,7 +19,7 @@ if &cp || exists('s:nb_loaded')
 endif
 
 if v:version < 700
-    echohl WarningMsg
+    echohl ErrorMsg
     echomsg 'Notebook: Vim version is too old, Notebook requires at least 7.0'
     echohl None
     finish
@@ -30,6 +30,47 @@ let s:nb_context=3
 let s:nb_folder=$HOME.'/.notebook'
 let s:nb_config=$HOME.'/.notebook/notebook.rc'
 let s:nb_items = sort(['Text', 'Action', 'Query', 'Session', 'Patch', 'Import', 'List' ])
+let s:nb_mode = 0 " partial mode
+
+function! NB_FindRoot(dir)
+    let root=a:dir
+    if match(a:dir, "/$")
+        let root=substitute(a:dir,"/$","","")
+    endif
+    let root_files = [ '.git', '.notebook_root' ]
+    for root_file in root_files
+        let s:nb_root = root."/".root_file
+        if isdirectory(s:nb_root) > 0 
+            let s:nb_root = substitute(s:nb_root,"/".root_file,"","")
+            break
+        endif
+        let s:nb_root = finddir( root_file, root.";")
+        if isdirectory(s:nb_root) > 0 
+            let s:nb_root = substitute(s:nb_root,"/".root_file,"","")
+            break
+        endif
+    endfor
+    if s:nb_root == ""
+        let s:nb_root = root
+    else
+        let s:nb_mode = 1 " full mode
+    endif
+    return s:nb_root
+endfunction
+function! NB_PrintRoot()
+    echomsg "Notebook Root: ".s:nb_root
+    if s:nb_mode == 0
+        echohl WarningMsg
+        echomsg "WARNING: Partial mode - references to files cannot be annotated"
+        echohl None
+    endif
+endfunction
+function! NB_GetRootPath(dir)
+    return substitute( a:dir, s:nb_root, "$NOTEBOOK_ROOT", "")
+endfunction
+
+call NB_FindRoot(expand(getcwd(),":p"))
+
 function! NB_Listfiles(dir)
   if isdirectory(a:dir) == 0
     return
@@ -327,6 +368,12 @@ function! NB_ClearMarks ()
   endif
 endfunction
 function! NB_AddMarkLineRef( use_context )
+  if s:nb_mode == 0
+      echohl WarningMsg
+      echomsg "WARNING: Partial mode - references to files cannot be annotated"
+      echohl None
+      return
+  endif
   silent! exec ":bd ".s:nb_file
   if exists('g:loaded_taglist')
     let winnum = bufwinnr(g:TagList_title)
@@ -340,10 +387,11 @@ function! NB_AddMarkLineRef( use_context )
   endif
   let l:note=input("Item Note? ")
   let l:time=strftime("%y_%m_%d_%H_%M")
+  let l:ref=NB_GetRootPath(expand("%:p"))
   exec ":redir >> ".s:nb_file
   :echo "\nText: ".l:note 
   :echo "\t: Category:  ".l:id 
-  :echo "\t: Reference: ".expand("%:p").':'.line('.')
+  :echo "\t: Reference: ".l:ref.':'.line('.')
   :echo "\t: Date:      ".l:time
   if s:nb_context > 0 && a:use_context > 0 
     let nb_linenum = line('.')
@@ -370,6 +418,12 @@ function! NB_AddMarkLineRef( use_context )
   :redir END
 endfunction                              
 function! NB_AddMarkSelLineRef(quick)
+  if s:nb_mode == 0
+      echohl WarningMsg
+      echomsg "WARNING: Partial mode - references to files cannot be annotated"
+      echohl None
+      return
+  endif
   silent! exec ":bd ".s:nb_file
   if exists('g:loaded_taglist')
     let winnum = bufwinnr(g:TagList_title)
@@ -392,10 +446,11 @@ function! NB_AddMarkSelLineRef(quick)
     let l:note=input("Item Note? ")
   endif
   let l:time=strftime("%y_%m_%d_%H_%M")
+  let l:ref=NB_GetRootPath(expand("%:p"))
   exec ":redir >> ".s:nb_file
   :echo "\nText: ".l:note 
   :echo "\t: Category:  ".l:id 
-  :echo "\t: Reference: ".expand("%:p").':'.line('.')
+  :echo "\t: Reference: ".l:ref.':'.line('.')
   :echo "\t: Date:      ".l:time
   if s:nb_context > 0 && strlen(sel_text) > 0 
     let l:nb_counter = 1
@@ -667,12 +722,33 @@ function! NB_GoToMark ()
   else
     " Text root node, then jump to the referenced location
     " first move the cursor at the begin of the path
+    exec "normal! zO"
     exec "normal! \/Reference: \<cr>"
     exec "normal! ".len("Reference: ")."l"
     exec ":set filetype=c"
     ""exec ":set foldmethod=indent"
     " TODO: use relative paths, in this case replace <root> placeholder
-    exec "normal! gFzz"
+    let line = getline(".")
+    let loc = strpart( line, match( line, "Reference: ") + len( "Reference: ") ) 
+    let loc = substitute( loc, ":", "|", "" )
+    let loc = substitute( loc, "$NOTEBOOK_ROOT", s:nb_root, "" )
+    let file = strpart( loc, 0, match( loc, "|")) 
+    if filereadable(file)
+        exec ":e ".loc
+    else
+        echohl ErrorMsg 
+        echomsg "File not found: ".file
+        echomsg "Either the file is missing or"
+        if s:nb_mode == 0 
+            echomsg "you started vim from an incorrect folder: ".s:nb_root
+        else
+            echomsg "the notebook root folder may be incorrect: ".s:nb_root
+            echomsg "Check if any of the notebook root folders is present in the wrong location"
+        endif
+        echohl None
+        return
+    endif
+    "exec "normal! gFzz"
     exec ":bd ".bn
   endif
 endfunction
@@ -985,6 +1061,8 @@ function! NB_Window_Open_Notebook(notebook)
     echom "Cannot open notebook: ".a:notebook
     return
   endif
+  "let p = expand("%:p:h")
+  "let s:nb_root = NB_FindRoot(p)
   " If the window is open, jump to it
   let winnum = bufwinnr(file)
   " :exe "! echo winnum=".winnum
@@ -1326,3 +1404,4 @@ nmap <S-n>k :exec ":map <S-n>"<cr>
 "nmap <S-n>nc :call NB_LocListMarks(0)<cr>
 nmap <S-n>an :call NB_AddNote()<cr>
 nmap <S-n>ai :call NB_AddImport()<cr>
+nmap <S-n>r  :call NB_PrintRoot()<cr>
