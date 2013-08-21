@@ -727,6 +727,8 @@ function! NB_GoToMark ()
         call NB_GoToQuery()
       elseif match(line,'^Session:') >= 0
         call NB_GoToSession()
+      elseif match(line,'^Action:') >= 0
+        call NB_ExecAction(2)
       endif
     return
   else
@@ -1269,7 +1271,35 @@ function! NB_RenameNotebook ()
     endif
   endif
 endfunction
-" Exec actions at ACTION_STARTUP, ACTION_SHUTDOWN, ACTION_USER
+" Exec actions at ACTION_SCRIPT
+function! NB_ExecAction( type )
+    exec "normal! j"
+    let line = getline (".")
+    if match(line,"Category:.*SCRIPT") >= 0 && a:type == 2
+        exec "normal! 2j"
+        let cmds = []
+        let lnum = line(".")
+        let line = getline (".")
+        while match(line,'^\W*;') >= 0
+            let cmd = strpart( line, match( line, ";" )+2)
+            let cmds = add( cmds, cmd )
+            exec "normal! j"
+            if line(".") == lnum
+                break
+            endif
+            let lnum = line(".")
+            let line = getline (".")
+        endwhile
+        if len(cmds) == 0
+            echom "No commands to execute"
+            return
+        endif
+        for cmd in cmds
+            exec cmd
+        endfor
+    endif
+endfunction
+" Exec all actions at ACTION_STARTUP, ACTION_SHUTDOWN, ACTION_SCRIPT
 function! NB_ExecActions( type )
   let s:nb_filename=g:nb_notebook.'.nb'
   let s:nb_file = s:nb_folder.'/'.s:nb_filename
