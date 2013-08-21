@@ -4,13 +4,15 @@
 " Author:      Walter Di Carlo
 " Licence:     Vim licence
 " Website:     https://github.com/wdicarlo/vim-notebook
-" Version:     0.1
+" Version:     0.2
 " Note:        
 " Changes:
 "    2012/08/09 version 0.1:
 "         * initial release
+"    2013/08/18 version 0.2
+"         * added support for relative reference to files
 " TODO:
-"   * Use relative paths
+"   * add support for multiple sub-projects
 " ============================================================================
 scriptencoding utf-8
 
@@ -31,6 +33,7 @@ let s:nb_folder=$HOME.'/.notebook'
 let s:nb_config=$HOME.'/.notebook/notebook.rc'
 let s:nb_items = sort(['Text', 'Action', 'Query', 'Session', 'Patch', 'Import', 'List' ])
 let s:nb_mode = 0 " partial mode
+let s:nb_root_hook = "NOTEBOOK_ROOT"
 
 function! NB_FindRoot(dir)
     let root=a:dir
@@ -66,7 +69,10 @@ function! NB_PrintRoot()
     endif
 endfunction
 function! NB_GetRootPath(dir)
-    return substitute( a:dir, s:nb_root, "$NOTEBOOK_ROOT", "")
+    return substitute( a:dir, s:nb_root, "$".s:nb_root_hook, "")
+endfunction
+function! NB_GetFullPath(dir)
+    return substitute( a:dir,  "$".s:nb_root_hook, s:nb_root, "")
 endfunction
 
 call NB_FindRoot(expand(getcwd(),":p"))
@@ -577,7 +583,8 @@ function! NB_AddSession ()
   silent! exec ":bd ".s:nb_file
   for t in range(1, tabpagenr('$'))
     for b in tabpagebuflist(t)
-      echo fnamemodify(bufname(b),":p")
+      let path = NB_GetRootPath(fnamemodify(bufname(b),":p"))
+      echo path
     endfor
   endfor
   let ans=input("Are you sure you want to create a session item for the follwing files?")
@@ -595,7 +602,8 @@ function! NB_AddSession ()
   :echo "\t: Reference: files"
   for t in range(1, tabpagenr('$'))
     for b in tabpagebuflist(t)
-      echo "\t\t; ".fnamemodify(bufname(b),":p")
+      let path = NB_GetRootPath(fnamemodify(bufname(b),":p"))
+      echo "\t\t; ".path
     endfor
   endfor
   redir END
@@ -666,6 +674,7 @@ function! NB_GoToSession ()
     let lnum = line(".")
     while match(line,'^\W*;') >= 0
       let path = strpart( line, match( line, ";" )+2)
+      let path = NB_GetFullPath( path )
       let paths = add( paths, path )
       exec "normal! j"
       if line(".") == lnum
@@ -702,6 +711,7 @@ function! NB_GoToMark ()
   let filename = fnamemodify(bufname('%'), ':t')
   let nb_file = fnamemodify(s:nb_file,':t')
   let bn = bufnr('%')
+  exec "normal! zO"
   let line = getline (".")
   " evaluate the current line
   let cmd = match(line,'^\w*:')
@@ -722,16 +732,14 @@ function! NB_GoToMark ()
   else
     " Text root node, then jump to the referenced location
     " first move the cursor at the begin of the path
-    exec "normal! zO"
     exec "normal! \/Reference: \<cr>"
     exec "normal! ".len("Reference: ")."l"
     exec ":set filetype=c"
     ""exec ":set foldmethod=indent"
-    " TODO: use relative paths, in this case replace <root> placeholder
     let line = getline(".")
     let loc = strpart( line, match( line, "Reference: ") + len( "Reference: ") ) 
     let loc = substitute( loc, ":", "|", "" )
-    let loc = substitute( loc, "$NOTEBOOK_ROOT", s:nb_root, "" )
+    let loc = NB_GetFullPath( loc )
     let file = strpart( loc, 0, match( loc, "|")) 
     if filereadable(file)
         exec ":e ".loc
@@ -971,6 +979,7 @@ function! NB_SelectSession(type)
     let paths = []
     while match(line,'^\W*;') >= 0
       let path = strpart( line, match( line, ";" )+2)
+      let path = NB_GetRootPath( path )
       let paths = add( paths, path )
       let i = i + 1
       if i >= len(lines) 
