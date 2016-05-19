@@ -40,7 +40,7 @@ function! NB_FindRoot(dir)
     if match(a:dir, "/$")
         let root=substitute(a:dir,"/$","","")
     endif
-    let root_files = [ '.git', '.notebook_root' ]
+    let root_files = [ '.svn', '.git', '.notebook_root' ]
     for root_file in root_files
         let s:nb_root = root."/".root_file
         if isdirectory(s:nb_root) > 0 
