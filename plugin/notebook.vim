@@ -637,6 +637,35 @@ function! NB_AddFilePatch()
   endif
   :redir END
 endfunction 
+function! NB_AddPatch()
+  silent! exec ":bd ".s:nb_file
+  let l:cmd=":!svn diff"
+  let l:ref=""
+  let l:time=strftime("%y_%m_%d_%H_%M")
+  :new
+  exec ":%!svn diff"
+  exec ":1,$y p"
+  exec ":q!"
+  let l:category='PATCH'
+  let l:note=input("Note? ")
+  let sel_text = @p
+  exec ":redir >> ".s:nb_file
+  echo "\nPatch: ".l:note
+  :echo "\t: Category:  ".l:category 
+  :echo "\t: Reference: ".l:cmd 
+  :echo "\t: Date:      ".l:time
+  if s:nb_context > 0 && strlen(sel_text) > 0 
+    let nb_lines = split(sel_text,"\\n")
+    let l:nb_counter = 0
+    for nb_line in nb_lines
+      if l:nb_counter >= 0 && l:nb_counter < len(nb_lines) 
+        :echo "\t\t; ".nb_line 
+      endif
+      let l:nb_counter = l:nb_counter + 1
+    endfor
+  endif
+  :redir END
+endfunction 
 function! NB_GoToQuery ()
   exec "normal! j"
   let line = getline (".")
@@ -711,7 +740,7 @@ function! NB_GoToMark ()
   let filename = fnamemodify(bufname('%'), ':t')
   let nb_file = fnamemodify(s:nb_file,':t')
   let bn = bufnr('%')
-  exec "normal! zO"
+  "exec "normal! zO"
   let line = getline (".")
   " evaluate the current line
   let cmd = match(line,'^\w*:')
@@ -1123,6 +1152,7 @@ function! NB_Window_Open_Notebook(notebook)
   endif
   exec ":tabnew ".file
   set modifiable
+  set filetype=c
   exec ":set nospell"
   ""exec ":set filetype=vo_base"
   redraw!
@@ -1408,6 +1438,7 @@ nmap <S-n>u :call NB_AddGlobalQuery(expand('<cword>'))<cr>
 nmap <S-n>u/ :call NB_AddGlobalQuery(@/)<cr>
 vmap <S-n>u :call <esc>NB_AddGlobalQuery(NB_GetVisual())<cr>
 nmap <S-n>p :call NB_AddFilePatch()<cr>
+nmap <S-n>P :call NB_AddPatch()<cr>
 nmap <S-n>s :call NB_AddSession()<cr>
 nmap <S-n>sq :call NB_SelectSession(0)<cr>
 nmap <S-n>o :call NB_Window_Open ()<cr>
