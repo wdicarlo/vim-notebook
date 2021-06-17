@@ -304,6 +304,40 @@ function! NB_SelectNotebook()
   call NB_ExecActions(0)
   call NB_Window_Open()
 endfunction
+function! NB_OpenNotebook( notebook )
+  "echomsg "Current Notebook: ".g:nb_notebook
+  "echomsg "Switching to Notebook: ".a:notebook
+  if g:nb_notebook == a:notebook
+    return
+  endif
+  " exec shutdown actions
+  call NB_ExecActions(1)
+  silent! exec ":bd ".s:nb_file
+
+  " create or open the specified notebook
+  let g:nb_notebook=a:notebook
+  let s:nb_filename=g:nb_notebook.'.nb'
+  let s:nb_file = s:nb_folder.'/'.s:nb_filename
+  if filereadable(s:nb_file) == 0
+    " create new notebook
+    let l:title="Notebook for: ".a:notebook
+    let l:note=""
+    let l:time=strftime("%y_%m_%d_%H_%M")
+    exec ":redir! > ".s:nb_file
+    :echo "\nNote: ".l:title 
+    :echo "\t: Category:  NOTEBOOK" 
+    :echo "\t: Reference: text"
+    :echo "\t: Date:      ".l:time
+    :echo "\t\t; ".l:note
+    :echo "\t\t; "
+    :redir END
+  endif
+  " update the nb_config file
+  silent! call NB_UpdateConfig()
+  " exec startup actions
+  call NB_ExecActions(0)
+  "call NB_Window_Open()
+endfunction
 function! NB_SelectCategory( canNew )
   if !exists('g:nb_categories')
       let g:nb_categories =['NONE'] 
@@ -587,7 +621,7 @@ function! NB_AddSession ()
       echo path
     endfor
   endfor
-  let ans=input("Are you sure you want to create a session item for the follwing files?")
+  let ans=input("Create a session item for the following files? Write 'yes' to confirm.")
   if ans != "yes"
     return  
   endif
@@ -1475,3 +1509,5 @@ nmap <S-n>k :exec ":map <S-n>"<cr>
 nmap <S-n>an :call NB_AddNote()<cr>
 nmap <S-n>ai :call NB_AddImport()<cr>
 nmap <S-n>r  :call NB_PrintRoot()<cr>
+
+command! -nargs=1 VimNotebookOpen call NB_OpenNotebook(<q-args>)
